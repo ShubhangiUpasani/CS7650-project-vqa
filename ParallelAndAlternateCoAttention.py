@@ -5,6 +5,7 @@ from torch.utils import data
 import torch.nn.functional as F
 import torch.optim as optim
 import random
+import matplotlib.pyplot as plt 
 
 train_image = np.load("preprocessed_data/transformed_train_image_features_vgg.npy")
 print(train_image.shape)
@@ -12,15 +13,17 @@ print(train_image.shape)
 val_image = np.load("preprocessed_data/transformed_val_image_features_vgg.npy")
 print(val_image.shape)
 
-train_question = np.load("preprocessed_data/train_questions_yesno.npy")
-train_answer = np.load("preprocessed_data/train_answers_yesno.npy")
+train_question = np.load("preprocessed_data/new_filtered_train_questions.npy")
+train_answer = np.load("preprocessed_data/new_filtered_train_answers.npy").astype(int)
 print(train_question.shape)
 print(train_answer.shape)
+print(train_answer.dtype)
 
-val_question = np.load("preprocessed_data/val_questions_yesno.npy")
-val_answer = np.load("preprocessed_data/val_answers_yesno.npy")
+val_question = np.load("preprocessed_data/new_filtered_val_questions.npy")
+val_answer = np.load("preprocessed_data/new_filtered_val_answers.npy").astype(int)
 print(val_question.shape)
 print(val_answer.shape)
+print(val_answer.dtype)
 
 #all_images = np.concatenate((train_image,val_image), axis=0)
 #all_questions = np.concatenate((train_question,val_question),axis=0)
@@ -54,13 +57,13 @@ print(val_answer.shape)
 #print(val_question.shape)
 #print(val_answer.shape)
 
-a ,b = np.unique(train_answer, return_counts=True)
-print(a)
-print(b)
+#a ,b = np.unique(train_answer, return_counts=True)
+#print(a)
+#print(b)
 
-a ,b = np.unique(val_answer, return_counts=True)
-print(a)
-print(b)
+#a ,b = np.unique(val_answer, return_counts=True)
+#print(a)
+#print(b)
 
 class ParallelCoAttention(nn.Module):
   def __init__(self, d, t, k, vocab_size, dropout):
@@ -146,7 +149,7 @@ class AnswerGeneration(nn.Module):
     self.tanh = nn.Tanh()
     self.softmax = nn.Softmax(dim = 1)
     self.W = nn.Linear(self.d, self.d_prime)
-    self.W_h = nn.Linear(self.d_prime,  2) #no of classes for yesno -2, number - 100, other - 1000 --verify again 
+    self.W_h = nn.Linear(self.d_prime,  104) #no of classes for yesno -2, number - 100, other - 1000 --verify again 
 
   def forward(self, q_hat, v_hat):
     h = self.tanh(self.dropout(self.W(q_hat + v_hat)))#self.tanh(self.W(q_hat + v_hat))
@@ -177,8 +180,8 @@ d = 512
 t = 25
 k = 512
 d_prime = 128 
-vocab_size = 400001
-dropout = 0.5
+vocab_size = 4400
+dropout = 0
 model = MainModel(d, t, k, d_prime, vocab_size, dropout)
 
 tensor_x = torch.Tensor(train_question).type(torch.long)
@@ -186,31 +189,34 @@ tensor_y = torch.Tensor(train_image).type(torch.float)
 tensor_z = torch.Tensor(train_answer).type(torch.long).squeeze()
 
 trainset = data.TensorDataset(tensor_x, tensor_y, tensor_z)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=300, shuffle = True, num_workers=2)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=1000, shuffle = True, num_workers=2)
 
 tensor_x = torch.Tensor(val_question).type(torch.long)
 tensor_y = torch.Tensor(val_image).type(torch.float)
 tensor_z = torch.Tensor(val_answer).type(torch.long).squeeze()
 
 valset = data.TensorDataset(tensor_x, tensor_y, tensor_z)
-valloader = torch.utils.data.DataLoader(valset, batch_size = 300, shuffle = True, num_workers = 2)
+valloader = torch.utils.data.DataLoader(valset, batch_size = 1000, shuffle = True, num_workers = 2)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.RMSprop(model.parameters(), lr=4e-4, weight_decay=1e-8, momentum=0.99)
+optimizer = optim.RMSprop(model.parameters(), lr=1e-4, weight_decay=1e-8, momentum=0.99)
 
 def get_accuracy(predictions, labels):
+  predictions = F.softmax(predictions,dim=1)
   predictions = torch.max(predictions, axis=1)[1]
+  #predictions = predictions.detach().numpy()
+  #correct = predictions.eq(labels).sum()
   ab = torch.abs(predictions-labels)
   ab = ab.detach().numpy()
   mn = np.minimum(ab, 1)
   eq = 1-mn
   correct = np.sum(eq)
   total = eq.shape[0]
+  #total = predictions.shape[0]
   return correct, total
 
 train_loss_plot = []
 val_loss_plot = []
-import matplotlib.pyplot as plt
 
 for epoch in range(256):  # loop over the dataset multiple times
 
@@ -262,13 +268,29 @@ for epoch in range(256):  # loop over the dataset multiple times
           total_val_loss += running_val_loss
           running_val_loss = 0.0
           
+    with open("output/output.txt","a") as f:
+        f.write("Epoch: "+str(epoch)+" Train Loss: "+str(total_loss)+" Val Loss "+str(total_val_loss)+" Train Correct "+str(correct)+" Val Correct "+str(val_correct)+" Train-Accuracy: "+str(correct/total)+" Val-Accuracy: "+str(val_correct/val_total))
+        f.write("\n")
+    f.close()
 
-    print("Epoch: ",epoch," Train Loss: ",total_loss," Val Loss ",total_val_loss," Train Correct ",correct, " Val Correct ",val_correct," Train-Accuracy: ", correct/total," Val-Accuracy: ",val_correct/val_total)
+    print("Epoch: ",epoch, " Train Loss ",total_loss," Val Loss ", total_val_loss, " Train Accuracy ",correct/total, " Val Accuracy ", val_correct/val_total)
+
     train_loss_plot.append(total_loss)
     val_loss_plot.append(total_val_loss)
-    plt.plot(np.arange(epoch+1),train_loss_plot)
-    plt.plot(np.arange(epoch+1),val_loss_plot)
-    plt.show()
+
+    with open("output/train_loss.txt","a") as f:
+        f.write(str(total_loss))
+        f.write("\n")
+    f.close()
+   
+    with open("output/val_loss.txt","a") as f:
+        f.write(str(total_val_loss))
+        f.write("\n")
+    f.close()
+    torch.save(model.state_dict(),"output/model.pt")
+    #plt.plot(np.arange(epoch+1),train_loss_plot)
+    #plt.plot(np.arange(epoch+1),val_loss_plot)
+    #plt.show()
 
 print('Finished Training')
 

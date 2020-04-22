@@ -4,7 +4,7 @@
 # In[1]:
 
 
-get_ipython().run_line_magic('cd', '"drive/My Drive"')
+#get_ipython().run_line_magic('cd', '"drive/My Drive"')
 
 
 # In[ ]:
@@ -24,7 +24,7 @@ def read_json(filename):
 # In[3]:
 
 
-get_ipython().run_line_magic('cd', '"VQA-master/PythonHelperTools/"')
+#get_ipython().run_line_magic('cd', '"VQA-master/PythonHelperTools/"')
 
 
 # In[ ]:
@@ -103,13 +103,48 @@ def get_vector(image_name):
 # In[9]:
 
 
-get_ipython().run_line_magic('cd', '..')
+#get_ipython().run_line_magic('cd', '..')
 
 
 # In[ ]:
 
 
-train_data = read_json("combined_filtered_train_dataset_32k.json")
+train_data = read_json("preprocessed_data/combined_filtered_train_dataset_32k.json")
+
+
+# In[ ]:
+
+
+import numpy as np
+image_features = np.zeros(shape=[len(train_data), 512, 14, 14])
+for i in range(len(train_data)):
+  if i%10 == 0:
+    print(i)
+  image_loc = train_data[i]['image_loc']
+  #print(image_loc)
+  vector = get_vector("/srv/share/datasets/coco/"+image_loc)
+  #vector = get_vector("Images/mscoco/"+image_loc)
+  image_features[i,:] = vector
+  # print(vector)
+  # break
+
+
+# In[ ]:
+
+
+np.save("preprocessed_data/new_filtered_train_image_features_vgg.npy", image_features)
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+train_data = read_json("preprocessed_data/combined_filtered_val_dataset_19k.json")
 
 
 # In[ ]:
@@ -122,7 +157,7 @@ for i in range(len(train_data)):
     print(i)
   image_loc = train_data[i]['image_loc']
   # print(image_loc)
-  vector = get_vector("Images/mscoco/"+image_loc)
+  vector = get_vector("/srv/share/datasets/coco/"+image_loc)
   image_features[i,:] = vector
   # print(vector)
   # break
@@ -131,39 +166,5 @@ for i in range(len(train_data)):
 # In[ ]:
 
 
-np.save("new_filtered_train_image_features_vgg.npy", image_features)
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-train_data = read_json("combined_filtered_val_dataset_19k.json")
-
-
-# In[ ]:
-
-
-import numpy as np
-image_features = np.zeros(shape=[len(train_data), 512, 14, 14])
-for i in range(len(train_data)):
-  if i%10 == 0:
-    print(i)
-  image_loc = train_data[i]['image_loc']
-  # print(image_loc)
-  vector = get_vector("Images/mscoco/"+image_loc)
-  image_features[i,:] = vector
-  # print(vector)
-  # break
-
-
-# In[ ]:
-
-
-np.save("new_filtered_val_image_features_vgg.npy", image_features)
+np.save("preprocessed_data/new_filtered_val_image_features_vgg.npy", image_features)
 
