@@ -181,25 +181,28 @@ t = 25
 k = 512
 d_prime = 128 
 vocab_size = 4400
-dropout = 0
+dropout = 0.1
+
 model = MainModel(d, t, k, d_prime, vocab_size, dropout)
+model.load_state_dict(torch.load("output/model.pt"))
+
 
 tensor_x = torch.Tensor(train_question).type(torch.long)
 tensor_y = torch.Tensor(train_image).type(torch.float)
 tensor_z = torch.Tensor(train_answer).type(torch.long).squeeze()
 
 trainset = data.TensorDataset(tensor_x, tensor_y, tensor_z)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=1000, shuffle = True, num_workers=2)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size = 5000, shuffle = True, num_workers=2)
 
 tensor_x = torch.Tensor(val_question).type(torch.long)
 tensor_y = torch.Tensor(val_image).type(torch.float)
 tensor_z = torch.Tensor(val_answer).type(torch.long).squeeze()
 
 valset = data.TensorDataset(tensor_x, tensor_y, tensor_z)
-valloader = torch.utils.data.DataLoader(valset, batch_size = 1000, shuffle = True, num_workers = 2)
+valloader = torch.utils.data.DataLoader(valset, batch_size = 5000, shuffle = True, num_workers = 2)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.RMSprop(model.parameters(), lr=1e-4, weight_decay=1e-8, momentum=0.99)
+optimizer = optim.RMSprop(model.parameters(), lr=4e-5, weight_decay=1e-6, momentum=0.99)
 
 def get_accuracy(predictions, labels):
   predictions = F.softmax(predictions,dim=1)
@@ -218,7 +221,7 @@ def get_accuracy(predictions, labels):
 train_loss_plot = []
 val_loss_plot = []
 
-for epoch in range(256):  # loop over the dataset multiple times
+for epoch in range(5):  # loop over the dataset multiple times
 
     running_loss = 0.0
     correct = 0
