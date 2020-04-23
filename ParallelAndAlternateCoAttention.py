@@ -181,10 +181,10 @@ t = 25
 k = 512
 d_prime = 128 
 vocab_size = 4400
-dropout = 0.1
+dropout = 0.25
 
 model = MainModel(d, t, k, d_prime, vocab_size, dropout)
-model.load_state_dict(torch.load("output/model.pt"))
+#model.load_state_dict(torch.load("output/model.pt"))
 
 
 tensor_x = torch.Tensor(train_question).type(torch.long)
@@ -202,7 +202,7 @@ valset = data.TensorDataset(tensor_x, tensor_y, tensor_z)
 valloader = torch.utils.data.DataLoader(valset, batch_size = 5000, shuffle = True, num_workers = 2)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.RMSprop(model.parameters(), lr=4e-5, weight_decay=1e-6, momentum=0.99)
+optimizer = optim.RMSprop(model.parameters(), lr=4e-4, weight_decay=1e-4, momentum=0.99)
 
 def get_accuracy(predictions, labels):
   predictions = F.softmax(predictions,dim=1)
@@ -221,7 +221,7 @@ def get_accuracy(predictions, labels):
 train_loss_plot = []
 val_loss_plot = []
 
-for epoch in range(5):  # loop over the dataset multiple times
+for epoch in range(150):  # loop over the dataset multiple times
 
     running_loss = 0.0
     correct = 0
